@@ -6,6 +6,10 @@
     android:orientation="vertical">
 
     <LinearLayout
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
@@ -14,7 +18,14 @@
            android:id="@+id/et_content"
            android:layout_width="0dp"
            android:layout_weight="3"
+           android:singleLine="true"
            android:layout_height="wrap_content" />
+
+        <Spinner
+            android:id="@+id/spinner_dynasty"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2" />
 
         <Button
            android:id="@+id/bt_search"
@@ -25,17 +36,26 @@
 
     </LinearLayout>
 
-
-    <TextView
-        android:id="@+id/txt_description"
+    <ScrollView
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:visibility="invisible"
-        android:text="杜甫（712年—770年），字子美，汉族，本襄阳人，后徙河南巩县。[1-2]  自号少陵野老，唐代伟大的现实主义诗人，与李白合称“李杜”。为了与另两位诗人李商隐与杜牧即“小李杜”区别，杜甫与李白又合称“大李杜”，杜甫也常被称为“老杜”。"
-        />
-
-
-    <com.amap.api.maps2d.MapView
+        android:layout_height="100dp" >
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical" >
+         <TextView
+              android:id="@+id/txt_description"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:singleLine="false"
+              android:visibility="invisible"
+              android:text=""
+          />
+        </LinearLayout>
+    </ScrollView>
+    <com.amap.api.maps.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

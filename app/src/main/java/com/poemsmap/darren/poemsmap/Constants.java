@@ -1,6 +1,7 @@
 package com.poemsmap.darren.poemsmap;
 
-import com.amap.api.maps2d.model.LatLng;
+
+import com.amap.api.maps.model.LatLng;
 
 /**
  * Created by Darren on 2017/12/21.

@@ -6,6 +6,10 @@
     android:orientation="vertical">
 
     <LinearLayout
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
@@ -54,7 +58,7 @@
         android:text="4，被陷浔阳（今江西九江）狱中，作《在浔阳非所寄内》、《系浔阳上崔相涣三首》、《狱中上崔相涣》等"
         />
 
-    <com.amap.api.maps2d.MapView
+    <com.amap.api.maps.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

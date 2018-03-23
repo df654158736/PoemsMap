@@ -1,74 +1,119 @@
 package com.poemsmap.darren.poemsmap;
 
+import android.graphics.Point;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.support.v4.app.Fragment;
+import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebView;
+import android.view.animation.BounceInterpolator;
+import android.view.animation.Interpolator;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 
-import com.amap.api.maps2d.AMap;
-import com.amap.api.maps2d.AMapUtils;
-import com.amap.api.maps2d.CameraUpdateFactory;
-import com.amap.api.maps2d.MapView;
-import com.amap.api.maps2d.model.CameraPosition;
-import com.amap.api.maps2d.model.Marker;
-import com.amap.api.maps2d.model.NaviPara;
-import com.amap.api.maps2d.overlay.PoiOverlay;
-import com.amap.api.services.core.AMapException;
-import com.amap.api.services.core.PoiItem;
-import com.amap.api.services.core.SuggestionCity;
-import com.amap.api.services.poisearch.PoiResult;
-import com.amap.api.services.poisearch.PoiSearch;
-import com.google.android.gms.maps.GoogleMap;
+import com.amap.api.maps.AMap;
+import com.amap.api.maps.CameraUpdateFactory;
+import com.amap.api.maps.MapView;
+import com.amap.api.maps.MapsInitializer;
+import com.amap.api.maps.Projection;
+import com.amap.api.maps.model.BitmapDescriptorFactory;
+import com.amap.api.maps.model.CameraPosition;
+import com.amap.api.maps.model.LatLng;
+import com.amap.api.maps.model.Marker;
+import com.amap.api.maps.model.MarkerOptions;
+import com.lzy.okgo.OkGo;
+import com.lzy.okgo.cache.CacheMode;
+import com.lzy.okgo.model.Response;
+import com.poemsmap.darren.poemsmap.model.SearchMap;
+import com.poemsmap.darren.poemsmap.supercache.NewsCallback;
+import com.poemsmap.darren.poemsmap.util.OffLineMapUtils;
 
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import butterknife.Bind;
+import butterknife.ButterKnife;
 
 /**
  * Created by Darren on 2017/12/21.
  */
 
-public class SearchMapFragment extends Fragment implements View.OnClickListener, AMap.OnMarkerClickListener, PoiSearch.OnPoiSearchListener {
-    private GoogleMap mMap;
-    private WebView webView;
+public class SearchMapFragment extends Fragment implements View.OnClickListener, AMap.OnMarkerClickListener {
+    @Bind(R.id.et_content)
+    EditText etContent;
+    @Bind(R.id.bt_search)
+    Button btSearch;
+    @Bind(R.id.txt_description)
+    TextView txtDescription;
+    @Bind(R.id.map)
+    MapView map;
+    @Bind(R.id.spinner_dynasty)
+    Spinner spinnerDynasty;
     private AMap aMap;
-    private PoiSearch.Query query;// Poi查询条件类
-    private PoiSearch poiSearch;// POI搜索
-    private PoiResult poiResult; // poi返回的结果
-    private EditText content;
-    private Button search;
-    private TextView des;
-    private View rootView;
+    private List<SearchMap> cacheList;
+    private Map<Marker,String> cacheMarker;
+    private int dynasty = 0;
 
-    public SearchMapFragment() {
+    public static SearchMapFragment newInstance() {
+        return new SearchMapFragment();
     }
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        rootView = inflater.inflate(R.layout.activity_searchmaps, container, false);
+        View rootView = inflater.inflate(R.layout.activity_searchmaps, container, false);
+        ButterKnife.bind(this, rootView);
+
+        MapsInitializer.sdcardDir = OffLineMapUtils.getSdCacheDir(getActivity());
 
         if (aMap == null) {
-            MapView mapView = (MapView) rootView.findViewById(R.id.map);
-            mapView.onCreate(savedInstanceState);
-            aMap = mapView.getMap();
-
+            map.onCreate(savedInstanceState);
+            aMap = map.getMap();
             aMap.moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition(
                     Constants.WUXI, 10, 30, 30)));
-
-            content = (EditText) rootView.findViewById(R.id.et_content);
-            search = (Button) rootView.findViewById(R.id.bt_search);
-            search.setOnClickListener(this);
-            des = (TextView) rootView.findViewById(R.id.txt_description);
+            btSearch.setOnClickListener(this);
             aMap.setOnMarkerClickListener(this);// 添加点击marker监听事件
+
+            if(cacheMarker == null){
+                cacheMarker = new HashMap<>();
+            }
+
+            List<String> list = new ArrayList<>();
+            list.add("无");
+            list.add("先秦两汉");
+            list.add("魏晋南北朝");
+            list.add("隋唐");
+            list.add("宋元");
+            list.add("明清");
+            list.add("近现代");
+            ArrayAdapter<String> adapter=new ArrayAdapter<>(getActivity(), android.R.layout.simple_spinner_item,list);
+            spinnerDynasty.setAdapter(adapter);
+            spinnerDynasty.setOnItemSelectedListener(new Spinner.OnItemSelectedListener(){
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    dynasty = position;
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+
+                }
+            });
         }
+
         return rootView;
     }
-
 
     @Override
     public void onClick(View v) {
@@ -78,17 +123,52 @@ public class SearchMapFragment extends Fragment implements View.OnClickListener,
              */
             case R.id.bt_search:
 
-                des.setVisibility(View.VISIBLE);
+                txtDescription.setVisibility(View.VISIBLE);
+                String loc = etContent.getText().toString();
 
-                String loc = content.getText().toString();
+                Map<String, String> param = new HashMap<>();
+                param.put("PoetName", loc);
+                param.put("Place", loc);
+                param.put("PoemName", loc);
+                param.put("Dynasty", dynasty+"");
+                JSONObject jsonObject = new JSONObject(param);
 
-                query = new PoiSearch.Query(loc, "", "无锡");// 第一个参数表示搜索字符串，第二个参数表示poi搜索类型，第三个参数表示poi搜索区域（空字符串代表全国）
-                query.setCityLimit(true);
+                OkGo.<List<SearchMap>>post("http://218.244.140.234:8085/api/Values/LocationList")
+                        .cacheKey("TabFragment_SearchMapFragment")
+                        .tag(this)
+                        .upJson(jsonObject)
+                        .cacheMode(CacheMode.FIRST_CACHE_THEN_REQUEST)  //缓存模式先使用缓存,然后使用网络数据
+                        .execute(new NewsCallback<List<SearchMap>>() {
+                            @Override
+                            public void onSuccess(Response<List<SearchMap>> response) {
+                                cacheList = response.body();
+                                cacheMarker.clear();
+                                txtDescription.setText("");
+                                aMap.clear();
+                                if (cacheList != null) {
+                                    for (SearchMap result : cacheList) {
+                                        MarkerOptions markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
+                                                .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                                                .position(new LatLng(result.Lat, result.Lng))
+                                                .title(result.PoetName)
+                                                .snippet(result.PoemName)
+                                                .draggable(true);
+                                        cacheMarker.put(aMap.addMarker(markerOption),result.Id);
+                                    }
+                                }
 
-                poiSearch = new PoiSearch(getActivity(), query);
-                query.setPageSize(1);
-                poiSearch.setOnPoiSearchListener(this);
-                poiSearch.searchPOIAsyn();
+                                if(!cacheList.isEmpty()){
+                                    aMap.moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition(
+                                            new LatLng(cacheList.get(0).Lat, cacheList.get(0).Lng) , 15, 30, 30)));
+                                }else{
+                                    aMap.moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition(
+                                            Constants.WUXI , 10, 30, 30)));
+                                }
+
+
+                            }
+                        });
+
 
                 break;
             default:
@@ -97,82 +177,102 @@ public class SearchMapFragment extends Fragment implements View.OnClickListener,
     }
 
 
-    public void startAMapNavi(Marker marker) {
-        // 构造导航参数
-        NaviPara naviPara = new NaviPara();
-        // 设置终点位置
-        naviPara.setTargetPoint(marker.getPosition());
-        // 设置导航策略，这里是避免拥堵
-        naviPara.setNaviStyle(AMapUtils.DRIVING_AVOID_CONGESTION);
 
-        // 调起高德地图导航
-        try {
-            AMapUtils.openAMapNavi(naviPara, getActivity());
-        } catch (com.amap.api.maps2d.AMapException e) {
+    /**
+     * 方法必须重写
+     */
 
-            // 如果没安装会进入异常，调起下载页面
-            AMapUtils.getLatestAMapApp(getActivity());
-
-        }
-
+    @Override
+    public void onResume() {
+        super.onResume();
+        map.onResume();
     }
 
 
+    /**
+     * 方法必须重写
+     */
     @Override
-    public boolean onMarkerClick(Marker marker) {
-        marker.showInfoWindow();
-        return false;
-    }
-
-    @Override
-    public void onPoiSearched(PoiResult result, int rCode) {
-
-        if (rCode == AMapException.CODE_AMAP_SUCCESS) {
-            if (result != null && result.getQuery() != null) {// 搜索poi的结果
-                if (result.getQuery().equals(query)) {// 是否是同一条
-                    poiResult = result;
-                    // 取得搜索到的poiitems有多少页
-                    List<PoiItem> poiItems = poiResult.getPois();// 取得第一页的poiitem数据，页数从数字0开始
-                    List<SuggestionCity> suggestionCities = poiResult
-                            .getSearchSuggestionCitys();// 当搜索不到poiitem数据时，会返回含有搜索关键字的城市信息
-
-                    if (poiItems != null && poiItems.size() > 0) {
-                        aMap.clear();// 清理之前的图标
-                        PoiOverlay poiOverlay = new PoiOverlay(aMap, poiItems);
-                        poiOverlay.removeFromMap();
-                        poiOverlay.addToMap();
-                        poiOverlay.zoomToSpan();
-                    } else if (suggestionCities != null
-                            && suggestionCities.size() > 0) {
-                        showSuggestCity(suggestionCities);
-                    } else {
-
-                    }
-                }
-            } else {
-
-            }
-        } else {
-        }
+    public void onPause() {
+        super.onPause();
+        map.onPause();
     }
 
     /**
-     * poi没有搜索到数据，返回一些推荐城市的信息
+     * 方法必须重写
      */
-    private void showSuggestCity(List<SuggestionCity> cities) {
-        String infomation = "推荐城市\n";
-        for (int i = 0; i < cities.size(); i++) {
-            infomation += "城市名称:" + cities.get(i).getCityName() + "城市区号:"
-                    + cities.get(i).getCityCode() + "城市编码:"
-                    + cities.get(i).getAdCode() + "\n";
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        map.onSaveInstanceState(outState);
+    }
+
+    /**
+     * 方法必须重写
+     */
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        map.onDestroy();
+    }
+
+
+    /**
+     * 对marker标注点点击响应事件
+     */
+    @Override
+    public boolean onMarkerClick(final Marker marker) {
+        if (aMap != null) {
+            jumpPoint(marker);
+            String id = cacheMarker.get(marker);
+            for (SearchMap map : cacheList) {
+                if (map.Id.equals(id)) {
+                    String description = map.Description == null? "<b>正文：</b><br/>"+ map.PoemContent.replace("\r\n","<br/>"):"<b>描述：</b><br/>"+map.Description+"<br/><b>正文：</b><br/>"+ map.PoemContent.replace("\r\n","<br/>");
+                    txtDescription.setText(Html.fromHtml(description));
+                }
+            }
+            marker.showInfoWindow();
         }
 
+//        Toast.makeText(getActivity(), "您点击了Marker", Toast.LENGTH_LONG).show();
+        return true;
+    }
+
+    /**
+     * marker点击时跳动一下
+     */
+    public void jumpPoint(final Marker marker) {
+        final Handler handler = new Handler();
+        final long start = SystemClock.uptimeMillis();
+        Projection proj = aMap.getProjection();
+        final LatLng markerLatlng = marker.getPosition();
+        Point markerPoint = proj.toScreenLocation(markerLatlng);
+        markerPoint.offset(0, -100);
+        final LatLng startLatLng = proj.fromScreenLocation(markerPoint);
+        final long duration = 1500;
+
+        final Interpolator interpolator = new BounceInterpolator();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                long elapsed = SystemClock.uptimeMillis() - start;
+                float t = interpolator.getInterpolation((float) elapsed
+                        / duration);
+                double lng = t * markerLatlng.longitude + (1 - t)
+                        * startLatLng.longitude;
+                double lat = t * markerLatlng.latitude + (1 - t)
+                        * startLatLng.latitude;
+                marker.setPosition(new LatLng(lat, lng));
+                if (t < 1.0) {
+                    handler.postDelayed(this, 16);
+                }
+            }
+        });
     }
 
     @Override
-    public void onPoiItemSearched(PoiItem poiItem, int i) {
-
+    public void onDestroyView() {
+        super.onDestroyView();
+        ButterKnife.unbind(this);
     }
-
-
 }
