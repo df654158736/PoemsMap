@@ -72,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         tabLayout = (TabLayout) findViewById(R.id.tabs);
         tabLayout.setupWithViewPager(mViewPager);
 
-        tabLayout.getTabAt(0).setCustomView(getTabView("搜索地图"));
+        tabLayout.getTabAt(0).setCustomView(getTabView("诗词地图"));
         tabLayout.getTabAt(1).setCustomView(getTabView("诗人地图"));
         tabLayout.getTabAt(2).setCustomView(getTabView("我的"));
 
