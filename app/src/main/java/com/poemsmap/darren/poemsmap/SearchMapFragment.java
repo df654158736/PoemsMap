@@ -227,7 +227,7 @@ public class SearchMapFragment extends Fragment implements View.OnClickListener,
             String id = cacheMarker.get(marker);
             for (SearchMap map : cacheList) {
                 if (map.Id.equals(id)) {
-                    String description = map.Description == null? "<b>正文：</b><br/>"+ map.PoemContent.replace("\r\n","<br/>"):"<b>描述：</b><br/>"+map.Description+"<br/><b>正文：</b><br/>"+ map.PoemContent.replace("\r\n","<br/>");
+                    String description = map.Description == null? "<b>正文：</b><br/>"+ map.PoemContent.replace("\r\n","<br/>"):"<b>描述：</b><br/>"+map.Description.replace("\r\n","<br/>")+"<br/><b>正文：</b><br/>"+ map.PoemContent.replace("\r\n","<br/>");
                     txtDescription.setText(Html.fromHtml(description));
                 }
             }
