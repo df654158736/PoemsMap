@@ -26,7 +26,7 @@ public abstract class NewsCallback<T> extends AbsCallback<T> {
         Type genType = getClass().getGenericSuperclass();
         Type[] params = ((ParameterizedType) genType).getActualTypeArguments();
         Type type = params[0];
-        if (!(type instanceof ParameterizedType)) throw new IllegalStateException("没有填写泛型参数");
+//        if (!(type instanceof ParameterizedType)) throw new IllegalStateException("没有填写泛型参数");
 
         JsonReader jsonReader = new JsonReader(response.body().charStream());
         T gankResponse = Convert.fromJson(jsonReader, type);
